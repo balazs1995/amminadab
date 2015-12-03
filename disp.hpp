@@ -54,6 +54,8 @@
 #include <ncurses.h>
 #include <mutex>
 
+
+
 class Disp
 {
 public:
@@ -68,17 +70,31 @@ public:
     curs_set ( FALSE );
 
     clear();
-
+  
     int  max_x, max_y;
-    getmaxyx ( stdscr, max_y, max_x );
+    getmaxyx ( stdscr, max_y, max_x ); //row, col
 
+    
+
+    
     mx = 0;
     my = 0;
 
-    vi_w = newwin ( 10+2, max_x, 0, 0 );
-    log_w = newwin ( max_y- ( 10+2 ) - 3, max_x, 10+2, 0 );
-    log_iw = newwin ( max_y- ( 10+2 ) - 3 -2, max_x-2, 10+2+1, 1 );
-    shell_w = newwin ( 3, max_x, 10+2+max_y- ( 10+2 ) - 3, 0 );
+    vi_w = newwin ( 10+2, max_x, //int nlines, int ncols
+		    0, 0 );  //int begin_y, int begin_x
+    log_w = newwin ( max_y- ( 10+2 ) - 3, max_x,
+		     10+2, 0 );
+    log_iw = newwin ( max_y- ( 10+2 ) - 3 -2, max_x-2,
+		      10+2+1, 1 );
+    shell_w = newwin ( 3, max_x, 10+2+max_y- ( 10+2 ) - 3,
+		       0 );
+    log_triplets = newwin (max_y-3, (max_x/2), 0, max_x/2);
+    
+    log_itriplets = newwin (max_y-4, (max_x/2)-2, 1, (max_x/2)+1);
+    
+    count = newwin (3, max_x, (max_x/2)+max_y-(max_y/2)-3, max_x/2);
+    
+    icount = newwin (1, max_x-1, (max_x/2)+max_y-(max_y/2)-1, max_x/2-1);
 
     start_color();
     /*
@@ -104,16 +120,25 @@ public:
     init_pair ( 10, COLOR_MAGENTA, COLOR_BLACK );
     init_pair ( 11, COLOR_GREEN, COLOR_MAGENTA );
 
-    wbkgd ( vi_w, COLOR_PAIR ( 1 ) );
-    wbkgd ( log_w, COLOR_PAIR ( 2 ) );
-    wbkgd ( log_iw, COLOR_PAIR ( 2 ) );
-    wbkgd ( shell_w, COLOR_PAIR ( 1 ) );
+    wbkgd ( vi_w, COLOR_PAIR ( 9 ) );
+    wbkgd ( log_w, COLOR_PAIR ( 9 ) );
+    wbkgd ( log_iw, COLOR_PAIR ( 9 ) );
+    wbkgd ( shell_w, COLOR_PAIR ( 10 ) );
+    wbkgd ( log_triplets, COLOR_PAIR (9) );
+    wbkgd ( log_itriplets , COLOR_PAIR(9));
+    wbkgd ( count, COLOR_PAIR(9));
+    wbkgd ( icount, COLOR_PAIR(9) );
 
     nodelay ( shell_w, TRUE );
     keypad ( shell_w, TRUE );
     scrollok ( log_iw, TRUE );
-
+    
+    scrollok( log_itriplets, TRUE);
+    keypad( log_itriplets, TRUE);
+    
+    scrollok( icount,TRUE);
     ui( );
+    
 
   }
 
@@ -123,7 +148,38 @@ public:
     delwin ( log_w );
     delwin ( log_iw );
     delwin ( shell_w );
+    delwin ( log_triplets );
+    delwin ( log_itriplets );
+    delwin ( count );
+    delwin ( icount );
     endwin();
+  }
+  
+  void count_v ( std::string msg) {
+    ncurses_mutex.lock();
+    ui();
+    msg =  msg + "\n";
+    waddstr ( icount, msg.c_str() );
+    
+    box ( count, 0, 0 );
+    mvwprintw ( count, 0, 1, " Counter: " );
+    
+    wrefresh ( icount );
+    ncurses_mutex.unlock();
+  }
+  
+  
+  void log_trip ( std::string msg)  {
+    ncurses_mutex.lock();
+    ui();
+    msg =  msg + "\n";
+    waddstr ( log_itriplets, msg.c_str() );
+    
+    box ( log_triplets, 0, 0 );
+    mvwprintw ( log_triplets, 0, 1, " Triplets: " );
+    
+    wrefresh ( log_itriplets );
+    ncurses_mutex.unlock();
   }
 
   void shell ( std::string msg )
@@ -250,20 +306,38 @@ private:
       {
         mx = max_x;
         my = max_y;
-
-        wresize ( vi_w, 10+2, mx );
+      
+	  
+	wresize(log_triplets, my-3, mx/2);
+	mvwin(log_triplets, 0, max_x/2);    		//( Window w, Int y, Int x ) w Window to move
+	werase(log_triplets); 				//y New position of top edge x New position of left edge
+	
+	wresize(log_itriplets, my-5, mx/2-2);
+	mvwin(log_itriplets, 1, (max_x/2)+1);    		
+	werase(log_itriplets); 
+	
+	wresize(count, 3, mx/2 );
+	mvwin(count, my-3, max_x/2 );
+	werase(count);
+	
+	wresize (icount, 2, mx/2-2);
+	mvwin(icount, my-2, (max_x/2)+1);
+	werase(icount);
+	
+	
+        wresize ( vi_w, 10+2, mx/2 );
         mvwin ( vi_w, 0, 0 );
         werase ( vi_w );
 
-        wresize ( log_w, my- ( 10+2 ) - 3, mx );
+        wresize ( log_w, my- ( 10+2 ) - 3, mx/2 );
         mvwin ( log_w, 10+2, 0 );
         werase ( log_w );
 
-        wresize ( log_iw, my- ( 10+2 ) - 3-2, mx-2 );
+        wresize ( log_iw, my- ( 10+2 ) - 3-2, (mx-2)/2 );
         mvwin ( log_iw, 10+2+1, 1 );
         werase ( log_iw );
 
-        wresize ( shell_w, 3, mx );
+        wresize ( shell_w, 3, mx/2 );
         mvwin ( shell_w, 10+2+my- ( 10+2 ) - 3, 0 );
         werase ( shell_w );
 
@@ -276,11 +350,23 @@ private:
         box ( shell_w, 0, 0 );
         mvwprintw ( shell_w, 0, 1, " Caregiver shell " );
         mvwprintw ( shell_w, 1, 1, "Norbi> Type your sentence and press [ENTER]" );
+	
+	box(log_triplets, 0 ,0);
+	mvwprintw(log_triplets, 0, 1, " Triplets: ");
+
+	
+	box(count,0,0);
+	mvwprintw(count, 0,1, " Counter: ");
+	
 
         wrefresh ( vi_w );
         wrefresh ( log_w );
         wrefresh ( log_iw );
         wrefresh ( shell_w );
+	wrefresh ( log_triplets );
+	wrefresh ( log_itriplets );
+	wrefresh ( count );
+	wrefresh ( icount );
       }
   }
 
@@ -289,6 +375,13 @@ private:
   WINDOW *vi_w;
   WINDOW *log_w, *log_iw;
   WINDOW *shell_w;
+  WINDOW *log_triplets, *log_itriplets;
+  WINDOW *count, *icount;
+
+  
+  
+  
+  
   int mx {0}, my {0};
 };
 

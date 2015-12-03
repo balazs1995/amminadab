@@ -64,6 +64,7 @@
 
 #include "nlp.hpp"
 #include "ql.hpp"
+#include "disp.hpp"
 
 #ifndef CHARACTER_CONSOLE
 #include <pngwriter.h>
@@ -85,6 +86,7 @@ public:
 
   Samu()
   {
+    
     cv_.notify_one();
   }
 
@@ -128,7 +130,8 @@ public:
 
     FamilyCaregiverShell();
   }
-
+int trip_c=0;
+  
   void sentence ( int id, std::string & sentence, std::string & file )
   {
     if ( msg_mutex.try_lock() )
@@ -150,9 +153,31 @@ public:
             std::fstream cache ( file,  std::ios_base::out|std::ios_base::app );
             if ( cache )
               {
-                for ( auto t : tv )
+                for ( auto t : tv ){
                   cache << t << std::endl;
-
+		
+		
+		std::stringstream ss, ss2;
+		for(size_t i = 0; i < tv.size(); ++i)
+		{
+		 /* if(i != 0)
+		    ss << ",";*/
+		  ss << tv[i];
+		}
+		std::string s = ss.str();
+		
+		std::string s2 = ss2.str();
+		
+		trip_c++;
+		
+		ss2<<trip_c;
+		s2=ss2.str();
+		  #ifdef DISP_CURSES
+		disp.log_trip(s);
+		disp.count_v(s2);
+		  #endif
+		  
+		}
                 cache.close();
               }
           }
@@ -178,7 +203,6 @@ public:
         old_talk_id = id;
 
         vi << nlp.sentence2triplets ( sentence.c_str() );
-
         msg_mutex.unlock();
 
       }

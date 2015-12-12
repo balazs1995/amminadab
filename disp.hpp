@@ -54,335 +54,395 @@
 #include <ncurses.h>
 #include <mutex>
 
-
-
-class Disp
-{
+class Disp {
 public:
 
-  Disp()
-  {
-    initscr();
+    bool key = false;
 
-    cbreak();
-    noecho();
-    timeout ( 0 );
-    curs_set ( FALSE );
+    Disp() {
 
-    clear();
-  
-    int  max_x, max_y;
-    getmaxyx ( stdscr, max_y, max_x ); //row, col
 
-    
+        initscr();
 
-    
-    mx = 0;
-    my = 0;
+        cbreak();
+        noecho();
+        timeout(0);
+        curs_set(FALSE);
 
-    vi_w = newwin ( 10+2, max_x, //int nlines, int ncols
-		    0, 0 );  //int begin_y, int begin_x
-    log_w = newwin ( max_y- ( 10+2 ) - 3, max_x,
-		     10+2, 0 );
-    log_iw = newwin ( max_y- ( 10+2 ) - 3 -2, max_x-2,
-		      10+2+1, 1 );
-    shell_w = newwin ( 3, max_x, 10+2+max_y- ( 10+2 ) - 3,
-		       0 );
-    log_triplets = newwin (max_y-3, (max_x/2), 0, max_x/2);
-    
-    log_itriplets = newwin (max_y-4, (max_x/2)-2, 1, (max_x/2)+1);
-    
-    count = newwin (3, max_x, (max_x/2)+max_y-(max_y/2)-3, max_x/2);
-    
-    icount = newwin (1, max_x-1, (max_x/2)+max_y-(max_y/2)-1, max_x/2-1);
+        clear();
 
-    start_color();
-    /*
-    init_pair ( 1,COLOR_WHITE, COLOR_BLUE );
-    init_pair ( 2, COLOR_WHITE, COLOR_YELLOW );
-    init_pair ( 3, COLOR_YELLOW, COLOR_BLUE );
-    */
-    /*
-    init_pair ( 1, COLOR_BLACK, COLOR_WHITE );
-    init_pair ( 2, COLOR_WHITE, COLOR_YELLOW );
-    init_pair ( 3, COLOR_WHITE, COLOR_RED );
-    */
-    init_pair ( 1, COLOR_BLACK, COLOR_WHITE );
-    init_pair ( 2, COLOR_WHITE, COLOR_MAGENTA );
-    init_pair ( 3, COLOR_WHITE, COLOR_RED );
-    
-    init_pair ( 4, COLOR_BLACK, COLOR_CYAN );
-    init_pair ( 5, COLOR_BLACK, COLOR_GREEN );
-    init_pair ( 6, COLOR_BLUE, COLOR_YELLOW );
-    init_pair ( 7, COLOR_BLACK, COLOR_MAGENTA );
-    init_pair ( 8, COLOR_CYAN, COLOR_RED );
-    init_pair ( 9, COLOR_WHITE, COLOR_BLACK );
-    init_pair ( 10, COLOR_MAGENTA, COLOR_BLACK );
-    init_pair ( 11, COLOR_GREEN, COLOR_MAGENTA );
+        int max_x, max_y;
+        getmaxyx(stdscr, max_y, max_x); //row, col
 
-    wbkgd ( vi_w, COLOR_PAIR ( 9 ) );
-    wbkgd ( log_w, COLOR_PAIR ( 9 ) );
-    wbkgd ( log_iw, COLOR_PAIR ( 9 ) );
-    wbkgd ( shell_w, COLOR_PAIR ( 10 ) );
-    wbkgd ( log_triplets, COLOR_PAIR (9) );
-    wbkgd ( log_itriplets , COLOR_PAIR(9));
-    wbkgd ( count, COLOR_PAIR(9));
-    wbkgd ( icount, COLOR_PAIR(9) );
+        mx = 0;
+        my = 0;
 
-    nodelay ( shell_w, TRUE );
-    keypad ( shell_w, TRUE );
-    scrollok ( log_iw, TRUE );
-    
-    scrollok( log_itriplets, TRUE);
-    keypad( log_itriplets, TRUE);
-    
-    scrollok( icount,TRUE);
-    ui( );
-    
+        vi_w = newwin(10 + 2, max_x, //int nlines, int ncols
+                0, 0); //int begin_y, int begin_x
+        log_w = newwin(max_y - (10 + 2) - 3, max_x,
+                10 + 2, 0);
+        log_iw = newwin(max_y - (10 + 2) - 3 - 2, max_x - 2,
+                10 + 2 + 1, 1);
+        shell_w = newwin(3, max_x, 10 + 2 + max_y - (10 + 2) - 3,
+                0);
+        log_triplets = newwin(max_y - 3, (max_x / 2), 0, max_x / 2);
 
-  }
+        log_itriplets = newwin(max_y - 4, (max_x / 2) - 2, 1, (max_x / 2) + 1);
 
-  ~Disp()
-  {
-    delwin ( vi_w );
-    delwin ( log_w );
-    delwin ( log_iw );
-    delwin ( shell_w );
-    delwin ( log_triplets );
-    delwin ( log_itriplets );
-    delwin ( count );
-    delwin ( icount );
-    endwin();
-  }
-  
-  void count_v ( std::string msg) {
-    ncurses_mutex.lock();
-    ui();
-    msg =  msg + "\n";
-    waddstr ( icount, msg.c_str() );
-    
-    box ( count, 0, 0 );
-    mvwprintw ( count, 0, 1, " Counter: " );
-    
-    wrefresh ( icount );
-    ncurses_mutex.unlock();
-  }
-  
-  
-  void log_trip ( std::string msg)  {
-    ncurses_mutex.lock();
-    ui();
-    msg =  msg + "\n";
-    waddstr ( log_itriplets, msg.c_str() );
-    
-    box ( log_triplets, 0, 0 );
-    mvwprintw ( log_triplets, 0, 1, " Triplets: " );
-    
-    wrefresh ( log_itriplets );
-    ncurses_mutex.unlock();
-  }
+        count = newwin(3, max_x, (max_x / 2) + max_y - (max_y / 2) - 3, max_x / 2);
 
-  void shell ( std::string msg )
-  {
-    ncurses_mutex.lock();
-    ui();
-    werase ( shell_w );
-    box ( shell_w, 0, 0 );
-    mvwprintw ( shell_w, 0, 1, " Caregiver shell " );
-    mvwprintw ( shell_w, 1, 1, "Norbi> " );
-    waddstr ( shell_w, msg.c_str() );
-    wrefresh ( shell_w );
-    ncurses_mutex.unlock();
-  }
+        icount = newwin(1, max_x - 1, (max_x / 2) + max_y - (max_y / 2) - 1, max_x / 2 - 1);
 
-  void vi ( std::string msg )
-  {
-    if ( ncurses_mutex.try_lock() )
-      {
+        start_color();
+        init_pair(1, COLOR_BLACK, COLOR_WHITE);
+        init_pair(2, COLOR_WHITE, COLOR_MAGENTA);
+        init_pair(3, COLOR_WHITE, COLOR_RED);
+
+        init_pair(4, COLOR_BLACK, COLOR_CYAN);
+        init_pair(5, COLOR_BLACK, COLOR_GREEN);
+        init_pair(6, COLOR_BLUE, COLOR_YELLOW);
+        init_pair(7, COLOR_BLACK, COLOR_MAGENTA);
+        init_pair(8, COLOR_CYAN, COLOR_RED);
+        init_pair(9, COLOR_WHITE, COLOR_BLACK);
+        init_pair(10, COLOR_MAGENTA, COLOR_BLACK);
+        init_pair(11, COLOR_GREEN, COLOR_MAGENTA);
+
+        wbkgd(vi_w, COLOR_PAIR(9));
+        wbkgd(log_w, COLOR_PAIR(9));
+        wbkgd(log_iw, COLOR_PAIR(9));
+        wbkgd(shell_w, COLOR_PAIR(10));
+        wbkgd(log_triplets, COLOR_PAIR(9));
+        wbkgd(log_itriplets, COLOR_PAIR(9));
+        wbkgd(count, COLOR_PAIR(9));
+        wbkgd(icount, COLOR_PAIR(9));
+
+        nodelay(shell_w, TRUE);
+        keypad(shell_w, TRUE);
+        scrollok(log_iw, TRUE);
+
+        scrollok(log_itriplets, TRUE);
+        keypad(log_itriplets, TRUE);
+
+        scrollok(icount, TRUE);
         ui();
-        werase ( vi_w );
-        wmove ( vi_w, 1, 0 );
-        waddstr ( vi_w, msg.c_str() );
-        box ( vi_w, 0, 0 );
-        mvwprintw ( vi_w, 0, 1, " Samu's visual imagery " );
-        wrefresh ( vi_w );
-        ncurses_mutex.unlock();
-      }
-  }
 
-  void vi ( char* vi_console )
-  {
-    if ( ncurses_mutex.try_lock() )
-      {
-	
-        ui();
-        werase ( vi_w );
 
-        for ( int i {0}; i<10; ++i )
-          {
-            wmove ( vi_w, i+1, 1 );
-            for ( int j {0}; j<80; ++j )
-              {
-                char c = vi_console[i*80+j];
+    }
 
-                if ( isprint ( c ) )
-                  {
-                    if ( isdigit ( c ) )
-                      {
-                        wattron ( vi_w,COLOR_PAIR ( c-'0'+2 ) );
-                        waddch ( vi_w, c );
-                        wattroff ( vi_w,COLOR_PAIR ( c-'0'+2 ) );
-                      }
-                    else
-                      waddch ( vi_w, c );
+    ~Disp() {
+        delwin(vi_w);
+        delwin(log_w);
+        delwin(log_iw);
+        delwin(shell_w);
+        delwin(log_triplets);
+        delwin(log_itriplets);
+        delwin(count);
+        delwin(icount);
+        endwin();
+    }
 
-                  }
-              }
-          }
+    void count_v(std::string msg) {
 
-        box ( vi_w, 0, 0 );
-        mvwprintw ( vi_w, 0, 1, " Samu's visual imagery " );
-        wrefresh ( vi_w );
-        ncurses_mutex.unlock();
-      }
-  }
+        if (key) {
+            ui2();
 
-  void log ( std::string msg )
-  {
-    ncurses_mutex.lock();
-    ui();
-    msg =  msg + "\n";
-    waddstr ( log_iw, msg.c_str() );
-    box ( log_w, 0, 0 );
-    mvwprintw ( log_w, 0, 1, " Samu's answers " );
-    wrefresh ( log_iw );
-    ncurses_mutex.unlock();
-  }
+        } else {
+            ui();
+        }
 
-  void cg_read()
-  {
-    int ch;
-    if ( ( ch = wgetch ( shell_w ) ) != ERR )
-      {
+        if (key == true) {
+            ncurses_mutex.lock();
+            //ui();
+            msg = msg + "\n";
+            waddstr(icount, msg.c_str());
 
-        if ( ch == '\n' )
-          {
-            std::string ret ( buf );
-            buf.clear();
-            shell ( buf );
-            throw ret;
-          }
-        else if ( ch == KEY_BACKSPACE )
-          {
-            if ( buf.size() >= 1 )
-              {
-                buf.pop_back();
-                shell ( buf );
-              }
-          }
+            box(log_triplets, 0, 0);
+            mvwprintw(icount, 0, 1, " Triplets number: ");
+
+            wrefresh(icount);
+            ncurses_mutex.unlock();
+        }
+    }
+
+    void log_trip(std::string msg) {
+
+        if (key) {
+            ui2();
+
+        } else {
+            ui();
+        }
+
+        if (key == true) {
+            ncurses_mutex.lock();
+            msg = msg + "\n";
+            waddstr(log_itriplets, msg.c_str());
+
+            box(log_triplets, 0, 0);
+            mvwprintw(log_triplets, 0, 1, " Triplets: ");
+
+            wrefresh(log_itriplets);
+            ncurses_mutex.unlock();
+        }
+    }
+
+    void shell(std::string msg) {
+        ncurses_mutex.lock();
+
+        if (key)
+            ui2();
+
         else
-          {
-            if ( isalnum ( ch ) || isspace ( ch ) )
-              {
-                if ( buf.length() < 78 )
-                  {
-                    buf += ch;
-                    shell ( buf );
-                  }
-              }
-          }
-      }
-  }
+            ui();
+
+        werase(shell_w);
+        box(shell_w, 0, 0);
+        mvwprintw(shell_w, 0, 1, " Caregiver shell ");
+        mvwprintw(shell_w, 1, 1, "Norbi> ");
+        waddstr(shell_w, msg.c_str());
+        wrefresh(shell_w);
+        ncurses_mutex.unlock();
+    }
+
+    void vi(std::string msg) {
+        if (ncurses_mutex.try_lock()) {
+
+            if (key)
+                ui2();
+
+            else
+                ui();
+
+            werase(vi_w);
+            wmove(vi_w, 1, 0);
+            waddstr(vi_w, msg.c_str());
+            box(vi_w, 0, 0);
+            mvwprintw(vi_w, 0, 1, " Samu's visual imagery ");
+            wrefresh(vi_w);
+            ncurses_mutex.unlock();
+        }
+    }
+
+    void vi(char* vi_console) {
+        if (ncurses_mutex.try_lock()) {
+
+            if (key)
+                ui2();
+
+            else
+                ui();
+
+            werase(vi_w);
+
+            for (int i{0}; i < 10; ++i) {
+            wmove(vi_w, i + 1, 1);
+            for (int j{0}; j < 80; ++j) {
+            char c = vi_console[i * 80 + j];
+
+            if (isprint(c)) {
+                if (isdigit(c)) {
+                    wattron(vi_w, COLOR_PAIR(c - '0' + 2));
+                    waddch(vi_w, c);
+                    wattroff(vi_w, COLOR_PAIR(c - '0' + 2));
+                } else
+                    waddch(vi_w, c);
+
+            }
+        }
+        }
+
+            box(vi_w, 0, 0);
+            mvwprintw(vi_w, 0, 1, " Samu's visual imagery ");
+            wrefresh(vi_w);
+            ncurses_mutex.unlock();
+        }
+    }
+
+    void log(std::string msg) {
+        ncurses_mutex.lock();
+
+        if (key)
+            ui2();
+
+        else
+            ui();
+
+        msg = msg + "\n";
+        waddstr(log_iw, msg.c_str());
+        box(log_w, 0, 0);
+        mvwprintw(log_w, 0, 1, " Samu's answers ");
+        wrefresh(log_iw);
+        ncurses_mutex.unlock();
+    }
+
+    bool breakout = true;
+
+    void cg_read() {
+        int ch;
+        std::string mess = " ";
+        if (ch = wgetch(shell_w) == 48) {
+            if (!key) {
+                ncurses_mutex.lock();
+                key = true;
+                mx += 100;
+                ui2();
+                waddstr(log_itriplets, mess.c_str());
+                waddstr(icount, mess.c_str());
+                ncurses_mutex.unlock();
+            } else {
+                key = false;
+                mx += 100;
+            }
+        }
+
+        if ((ch = wgetch(shell_w)) != ERR) {
+
+            if (ch == '\n') {
+                std::string ret(buf);
+                buf.clear();
+                shell(buf);
+                throw ret;
+            } else if (ch == KEY_BACKSPACE) {
+                if (buf.size() >= 1) {
+                    buf.pop_back();
+                    shell(buf);
+                }
+            } else {
+                if (isalnum(ch) || isspace(ch)) {
+                    if (buf.length() < 78) {
+                        buf += ch;
+                        shell(buf);
+                    }
+                }
+            }
+        }
+    }
 
 private:
 
-  void ui ( void )
-  {
-    int  max_x, max_y;
+    void ui(void) {
+        int max_x, max_y;
 
-    getmaxyx ( stdscr, max_y, max_x );
+        getmaxyx(stdscr, max_y, max_x);
 
-    if ( mx != max_x || my != max_y )
-      {
-        mx = max_x;
-        my = max_y;
-      
-	  
-	wresize(log_triplets, my-3, mx/2);
-	mvwin(log_triplets, 0, max_x/2);    		//( Window w, Int y, Int x ) w Window to move
-	werase(log_triplets); 				//y New position of top edge x New position of left edge
-	
-	wresize(log_itriplets, my-5, mx/2-2);
-	mvwin(log_itriplets, 1, (max_x/2)+1);    		
-	werase(log_itriplets); 
-	
-	wresize(count, 3, mx/2 );
-	mvwin(count, my-3, max_x/2 );
-	werase(count);
-	
-	wresize (icount, 2, mx/2-2);
-	mvwin(icount, my-2, (max_x/2)+1);
-	werase(icount);
-	
-	
-        wresize ( vi_w, 10+2, mx/2 );
-        mvwin ( vi_w, 0, 0 );
-        werase ( vi_w );
+        if (mx != max_x || my != max_y) {
+            mx = max_x;
+            my = max_y;
 
-        wresize ( log_w, my- ( 10+2 ) - 3, mx/2 );
-        mvwin ( log_w, 10+2, 0 );
-        werase ( log_w );
+            wresize(vi_w, 10 + 2, mx);
+            mvwin(vi_w, 0, 0);
+            werase(vi_w);
 
-        wresize ( log_iw, my- ( 10+2 ) - 3-2, (mx-2)/2 );
-        mvwin ( log_iw, 10+2+1, 1 );
-        werase ( log_iw );
+            wresize(log_w, my - (10 + 2) - 3, mx);
+            mvwin(log_w, 10 + 2, 0);
+            werase(log_w);
 
-        wresize ( shell_w, 3, mx/2 );
-        mvwin ( shell_w, 10+2+my- ( 10+2 ) - 3, 0 );
-        werase ( shell_w );
+            wresize(log_iw, my - (10 + 2) - 3 - 2, mx - 2);
+            mvwin(log_iw, 10 + 2 + 1, 1);
+            werase(log_iw);
 
-        box ( vi_w, 0, 0 );
-        mvwprintw ( vi_w, 0, 1, " Samu's visual imagery " );
+            wresize(shell_w, 3, mx);
+            mvwin(shell_w, 10 + 2 + my - (10 + 2) - 3, 0);
+            werase(shell_w);
 
-        box ( log_w, 0, 0 );
-        mvwprintw ( log_w, 0, 1, " Samu's answers " );
+            box(vi_w, 0, 0);
+            mvwprintw(vi_w, 0, 1, " Samu's visual imagery ");
 
-        box ( shell_w, 0, 0 );
-        mvwprintw ( shell_w, 0, 1, " Caregiver shell " );
-        mvwprintw ( shell_w, 1, 1, "Norbi> Type your sentence and press [ENTER]" );
-	
-	box(log_triplets, 0 ,0);
-	mvwprintw(log_triplets, 0, 1, " Triplets: ");
+            box(log_w, 0, 0);
+            mvwprintw(log_w, 0, 1, " Samu's answers ");
 
-	
-	box(count,0,0);
-	mvwprintw(count, 0,1, " Counter: ");
-	
+            box(shell_w, 0, 0);
+            mvwprintw(shell_w, 0, 1, " Caregiver shell ");
+            mvwprintw(shell_w, 1, 1, "Norbi> Type your sentence and press [ENTER]");
 
-        wrefresh ( vi_w );
-        wrefresh ( log_w );
-        wrefresh ( log_iw );
-        wrefresh ( shell_w );
-	wrefresh ( log_triplets );
-	wrefresh ( log_itriplets );
-	wrefresh ( count );
-	wrefresh ( icount );
-      }
-  }
+            wrefresh(vi_w);
+            wrefresh(log_w);
+            wrefresh(log_iw);
+            wrefresh(shell_w);
+        }
+    }
 
-  std::mutex ncurses_mutex;
-  std::string buf;
-  WINDOW *vi_w;
-  WINDOW *log_w, *log_iw;
-  WINDOW *shell_w;
-  WINDOW *log_triplets, *log_itriplets;
-  WINDOW *count, *icount;
+    void ui2(void) {
+        int max_x, max_y;
 
-  
-  
-  
-  
-  int mx {0}, my {0};
+        getmaxyx(stdscr, max_y, max_x);
+
+        if (mx != max_x || my != max_y) {
+            mx = max_x;
+            my = max_y;
+
+            int wscrl(WINDOW *win, int n);
+
+            wresize(log_triplets, my - 3, mx / 2);
+            mvwin(log_triplets, 0, max_x / 2);
+            werase(log_triplets);
+
+            wresize(log_itriplets, my - 5, mx / 2 - 2);
+            mvwin(log_itriplets, 1, (max_x / 2) + 1);
+            werase(log_itriplets);
+
+            wresize(count, 3, mx / 2);
+            mvwin(count, my - 3, max_x / 2);
+            werase(count);
+
+            wresize(icount, 2, mx / 2 - 2);
+            mvwin(icount, my - 2, (max_x / 2) + 1);
+            werase(icount);
+
+
+            wresize(vi_w, 10 + 2, mx / 2);
+            mvwin(vi_w, 0, 0);
+            werase(vi_w);
+
+            wresize(log_w, my - (10 + 2) - 3, mx / 2);
+            mvwin(log_w, 10 + 2, 0);
+            werase(log_w);
+
+            wresize(log_iw, my - (10 + 2) - 3 - 2, (mx - 2) / 2);
+            mvwin(log_iw, 10 + 2 + 1, 1);
+            werase(log_iw);
+
+            wresize(shell_w, 3, mx / 2);
+            mvwin(shell_w, 10 + 2 + my - (10 + 2) - 3, 0);
+            werase(shell_w);
+
+            box(vi_w, 0, 0);
+            mvwprintw(vi_w, 0, 1, " Samu's visual imagery ");
+
+            box(log_w, 0, 0);
+            mvwprintw(log_w, 0, 1, " Samu's answers ");
+
+            box(shell_w, 0, 0);
+            mvwprintw(shell_w, 0, 1, " Caregiver shell ");
+            mvwprintw(shell_w, 1, 1, "Norbi> Type your sentence and press [ENTER]");
+
+            box(log_triplets, 0, 0);
+            mvwprintw(log_triplets, 0, 1, " Triplets: ");
+
+
+            box(count, 0, 0);
+            mvwprintw(count, 0, 1, " Counter: ");
+
+
+            wrefresh(vi_w);
+            wrefresh(log_w);
+            wrefresh(log_iw);
+            wrefresh(shell_w);
+            wrefresh(log_triplets);
+            wrefresh(log_itriplets);
+            wrefresh(count);
+            wrefresh(icount);
+        }
+    }
+
+    std::mutex ncurses_mutex;
+    std::string buf;
+    WINDOW *vi_w;
+    WINDOW *log_w, *log_iw;
+    WINDOW *shell_w;
+    WINDOW *log_triplets, *log_itriplets;
+    WINDOW *count, *icount;
+    int mx{0}, my{0};
 };
 
 #endif
